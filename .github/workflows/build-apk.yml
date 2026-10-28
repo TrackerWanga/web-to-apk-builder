@@ -13,17 +13,25 @@ on:
         description: "Package ID (e.g. com.megan.test)"
         required: true
       logo_text:
-        description: "Logo Text (1-2 letters, e.g. MT)"
+        description: "Logo Text (e.g. M)"
         required: false
         default: "M"
       logo_color:
-        description: "Logo Color (Hex, e.g. #FF6B35)"
+        description: "Logo Color (Hex)"
         required: false
         default: "#FF6B35"
       splash_color:
-        description: "Splash Background Color (Hex)"
+        description: "Splash Color (Hex)"
         required: false
         default: "#111111"
+      allow_storage:
+        description: "Allow Storage (true/false)"
+        required: false
+        default: "false"
+      allow_notifications:
+        description: "Allow Notifications (true/false)"
+        required: false
+        default: "false"
 
 jobs:
   build:
@@ -45,8 +53,6 @@ jobs:
       - name: Generate Branding & Icons
         run: |
           mkdir -p branding
-        
-          # Create SVG Logo
           cat > branding/logo.svg <<EOF
           <svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
             <rect width="512" height="512" rx="100" fill="${{ inputs.splash_color }}"/>
@@ -55,13 +61,9 @@ jobs:
             <text x="50%" y="90%" font-family="Arial, sans-serif" font-size="28" fill="#ffffff" text-anchor="middle">Powered by Megan APIs</text>
           </svg>
           EOF
-        
-          # Install tools to convert SVG -> PNG
           sudo apt-get install -y librsvg2-bin
-          rsvg-convert -w 512 -h 512 branding/logo.svg -o branding/logo_512.png
           rsvg-convert -w 192 -h 192 branding/logo.svg -o branding/logo_192.png
-          rsvg-convert -w 144 -h 144 branding/logo.svg -o branding/logo_144.png
-          rsvg-convert -w 96 -h 96 branding/logo.svg -o branding/logo_96.png
+          rsvg-convert -w 512 -h 512 branding/logo.svg -o branding/logo_512.png
 
       - name: Generate Project
         run: |
@@ -72,6 +74,7 @@ jobs:
           mkdir -p app/src/main/res/mipmap-xhdpi
           mkdir -p app/src/main/res/mipmap-xxhdpi
           mkdir -p app/src/main/res/mipmap-xxxhdpi
+          mkdir -p app/src/main/res/layout
 
           cat > settings.gradle <<'EOF'
           rootProject.name = "WebAPK"
@@ -89,9 +92,7 @@ jobs:
             repositories { google(); mavenCentral() }
             dependencies { classpath 'com.android.tools.build:gradle:8.2.0' }
           }
-          allprojects {
-            repositories { google(); mavenCentral() }
-          }
+          allprojects { repositories { google(); mavenCentral() } }
           EOF
 
           cat > app/build.gradle <<EOF
@@ -110,14 +111,11 @@ jobs:
           dependencies { implementation 'androidx.appcompat:appcompat:1.6.1' }
           EOF
 
-          # Copy generated icons
           cp branding/logo_192.png app/src/main/res/mipmap-hdpi/ic_launcher.png
           cp branding/logo_192.png app/src/main/res/mipmap-xhdpi/ic_launcher.png
           cp branding/logo_512.png app/src/main/res/mipmap-xxhdpi/ic_launcher.png
           cp branding/logo_512.png app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
 
-          # Create colors.xml (defines splash and logo colors as resources)
-          mkdir -p app/src/main/res/values
           cat > app/src/main/res/values/colors.xml <<EOF
           <?xml version="1.0" encoding="utf-8"?>
           <resources>
@@ -126,8 +124,6 @@ jobs:
           </resources>
           EOF
 
-          # Create splash background (references the color resource)
-          mkdir -p app/src/main/res/drawable
           cat > app/src/main/res/drawable/splash_bg.xml <<EOF
           <?xml version="1.0" encoding="utf-8"?>
           <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
@@ -146,81 +142,32 @@ jobs:
           </resources>
           EOF
 
-          # Build the splash screen layout
-          cat > app/src/main/res/layout_splash_placeholder.txt <<EOF
-          Placeholder for layout
-          EOF
-          
-          mkdir -p app/src/main/res/layout
           cat > app/src/main/res/layout/activity_splash.xml <<EOF
           <?xml version="1.0" encoding="utf-8"?>
           <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-              android:layout_width="match_parent"
-              android:layout_height="match_parent"
-              android:background="@color/splash_bg"
-              android:gravity="center">
-              
-              <LinearLayout
-                  android:layout_width="wrap_content"
-                  android:layout_height="wrap_content"
-                  android:orientation="vertical"
-                  android:gravity="center">
-                  
-                  <ImageView
-                      android:layout_width="150dp"
-                      android:layout_height="150dp"
-                      android:src="@mipmap/ic_launcher" />
-                      
-                  <TextView
-                      android:layout_width="wrap_content"
-                      android:layout_height="wrap_content"
-                      android:text="${{ inputs.app_name }}"
-                      android:textColor="#FFFFFF"
-                      android:textSize="24sp"
-                      android:textStyle="bold"
-                      android:layout_marginTop="20dp" />
-                      
-                  <TextView
-                      android:layout_width="wrap_content"
-                      android:layout_height="wrap_content"
-                      android:text="Created by Megan Tech"
-                      android:textColor="#AAAAAA"
-                      android:textSize="14sp"
-                      android:layout_marginTop="40dp" />
-                      
-                  <TextView
-                      android:layout_width="wrap_content"
-                      android:layout_height="wrap_content"
-                      android:text="Powered by Megan APIs"
-                      android:textColor="#AAAAAA"
-                      android:textSize="12sp" />
-                      
-                  <TextView
-                      android:layout_width="wrap_content"
-                      android:layout_height="wrap_content"
-                      android:text="Contact: 254758476795"
-                      android:textColor="@color/logo_accent"
-                      android:textSize="12sp"
-                      android:textStyle="bold"
-                      android:layout_marginTop="5dp" />
-                      
-                  <TextView
-                      android:layout_width="wrap_content"
-                      android:layout_height="wrap_content"
-                      android:text="Engineered by Wanga"
-                      android:textColor="#555555"
-                      android:textSize="10sp"
-                      android:layout_marginTop="10dp" />
-                  
+              android:layout_width="match_parent" android:layout_height="match_parent"
+              android:background="@color/splash_bg" android:gravity="center">
+              <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="vertical" android:gravity="center">
+                  <ImageView android:layout_width="150dp" android:layout_height="150dp" android:src="@mipmap/ic_launcher" />
+                  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="${{ inputs.app_name }}" android:textColor="#FFFFFF" android:textSize="24sp" android:textStyle="bold" android:layout_marginTop="20dp" />
+                  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Created by Megan Tech" android:textColor="#AAAAAA" android:textSize="14sp" android:layout_marginTop="40dp" />
+                  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Powered by Megan APIs" android:textColor="#AAAAAA" android:textSize="12sp" />
+                  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Contact: 254758476795" android:textColor="@color/logo_accent" android:textSize="12sp" android:textStyle="bold" android:layout_marginTop="5dp" />
+                  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Engineered by Wanga" android:textColor="#555555" android:textSize="10sp" android:layout_marginTop="10dp" />
               </LinearLayout>
           </RelativeLayout>
           EOF
 
+          # MANIFEST WITH CONDITIONAL PERMISSIONS
           cat > app/src/main/AndroidManifest.xml <<EOF
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
             <uses-permission android:name="android.permission.INTERNET" />
             <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+            
+            $(if [ "${{ inputs.allow_storage }}" = "true" ]; then echo '<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />'; echo '<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />'; fi)
+            $(if [ "${{ inputs.allow_notifications }}" = "true" ]; then echo '<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />'; fi)
+
             <application 
               android:label="${{ inputs.app_name }}" 
               android:theme="@style/AppTheme"
@@ -228,25 +175,19 @@ jobs:
               android:hardwareAccelerated="true">
               <activity 
                 android:name=".SplashActivity" 
-                android:exported="true"
-                android:theme="@style/AppTheme">
+                android:exported="true">
                 <intent-filter>
                   <action android:name="android.intent.action.MAIN" />
                   <category android:name="android.intent.category.LAUNCHER" />
                 </intent-filter>
               </activity>
-              <activity 
-                android:name=".MainActivity" 
-                android:exported="false"
-                android:configChanges="orientation|screenSize|keyboardHidden">
-              </activity>
+              <activity android:name=".MainActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden" />
             </application>
           </manifest>
           EOF
 
           cat > app/src/main/java/com/megan/webapk/SplashActivity.java <<EOF
           package ${{ inputs.package_id }};
-
           import android.content.Intent;
           import android.os.Bundle;
           import android.os.Handler;
@@ -258,23 +199,29 @@ jobs:
             protected void onCreate(Bundle savedInstanceState) {
               super.onCreate(savedInstanceState);
               setContentView(R.layout.activity_splash);
-              
               new Handler(Looper.getMainLooper()).postDelayed(() -> {
                 startActivity(new Intent(SplashActivity.this, MainActivity.class));
                 finish();
-              }, 2500); // 2.5 seconds splash
+              }, 2500);
             }
           }
           EOF
 
+          # MAIN ACTIVITY WITH WEBCHROME CLIENT FOR PERMISSIONS & UPLOADS
           cat > app/src/main/java/com/megan/webapk/MainActivity.java <<EOF
           package ${{ inputs.package_id }};
 
+          import android.Manifest;
+          import android.content.pm.PackageManager;
+          import android.os.Build;
           import android.os.Bundle;
+          import android.webkit.PermissionRequest;
+          import android.webkit.WebChromeClient;
           import android.webkit.WebSettings;
           import android.webkit.WebView;
           import android.webkit.WebViewClient;
           import androidx.appcompat.app.AppCompatActivity;
+          import androidx.core.app.ActivityCompat;
 
           public class MainActivity extends AppCompatActivity {
             private WebView webView;
@@ -282,6 +229,16 @@ jobs:
             @Override
             protected void onCreate(Bundle savedInstanceState) {
               super.onCreate(savedInstanceState);
+              
+              // Request OS permissions if needed
+              if (Build.VERSION.SDK_INT >= 33) {
+                ActivityCompat.requestPermissions(this, new String[]{
+                  Manifest.permission.POST_NOTIFICATIONS, 
+                  Manifest.permission.READ_EXTERNAL_STORAGE, 
+                  Manifest.permission.WRITE_EXTERNAL_STORAGE
+                }, 1);
+              }
+              
               webView = new WebView(this);
               WebSettings settings = webView.getSettings();
               settings.setJavaScriptEnabled(true);
@@ -292,6 +249,14 @@ jobs:
               settings.setDisplayZoomControls(false);
               settings.setMediaPlaybackRequiresUserGesture(false);
               settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+              
+              // Handle permission requests from the website (e.g. mic/camera)
+              webView.setWebChromeClient(new WebChromeClient() {
+                @Override
+                public void onPermissionRequest(final PermissionRequest request) {
+                  request.grant(request.getResources());
+                }
+              });
               
               webView.setWebViewClient(new WebViewClient());
               webView.loadUrl("${{ inputs.website_url }}");
