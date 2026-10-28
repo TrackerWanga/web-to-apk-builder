@@ -116,11 +116,22 @@ jobs:
           cp branding/logo_512.png app/src/main/res/mipmap-xxhdpi/ic_launcher.png
           cp branding/logo_512.png app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
 
-          # Create splash background (solid color with branding watermark)
+          # Create colors.xml (defines splash and logo colors as resources)
+          mkdir -p app/src/main/res/values
+          cat > app/src/main/res/values/colors.xml <<EOF
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+            <color name="splash_bg">${{ inputs.splash_color }}</color>
+            <color name="logo_accent">${{ inputs.logo_color }}</color>
+          </resources>
+          EOF
+
+          # Create splash background (references the color resource)
+          mkdir -p app/src/main/res/drawable
           cat > app/src/main/res/drawable/splash_bg.xml <<EOF
           <?xml version="1.0" encoding="utf-8"?>
           <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-            <item android:drawable="${{ inputs.splash_color }}" />
+            <item android:drawable="@color/splash_bg" />
           </layer-list>
           EOF
 
@@ -128,8 +139,8 @@ jobs:
           <?xml version="1.0" encoding="utf-8"?>
           <resources>
             <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
-              <item name="colorPrimary">${{ inputs.logo_color }}</item>
-              <item name="colorAccent">${{ inputs.logo_color }}</item>
+              <item name="colorPrimary">@color/logo_accent</item>
+              <item name="colorAccent">@color/logo_accent</item>
               <item name="android:windowBackground">@drawable/splash_bg</item>
             </style>
           </resources>
@@ -146,7 +157,7 @@ jobs:
           <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
               android:layout_width="match_parent"
               android:layout_height="match_parent"
-              android:background="${{ inputs.splash_color }}"
+              android:background="@color/splash_bg"
               android:gravity="center">
               
               <LinearLayout
@@ -188,7 +199,7 @@ jobs:
                       android:layout_width="wrap_content"
                       android:layout_height="wrap_content"
                       android:text="Contact: 254758476795"
-                      android:textColor="${{ inputs.logo_color }}"
+                      android:textColor="@color/logo_accent"
                       android:textSize="12sp"
                       android:textStyle="bold"
                       android:layout_marginTop="5dp" />
