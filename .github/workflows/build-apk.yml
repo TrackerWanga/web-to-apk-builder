@@ -31,20 +31,85 @@ jobs:
           $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
       - name: Generate project
-        env:
-          URL: ${{ inputs.website_url }}
-          NAME: ${{ inputs.app_name }}
-          PKG: ${{ inputs.package_id }}
         run: |
           mkdir -p app/src/main/java/com/megan/webapk
           mkdir -p app/src/main/res/mipmap-hdpi
-          echo 'rootProject.name = "WebAPK"' > settings.gradle
-          echo 'include ":app"' >> settings.gradle
-          printf "android.useAndroidX=true\nandroid.enableJetifier=true\norg.gradle.jvmargs=-Xmx2048m\n" > gradle.properties
-          printf "buildscript {\n  repositories { google(); mavenCentral() }\n  dependencies { classpath 'com.android.tools.build:gradle:8.2.0' }\n}\nallprojects { repositories { google(); mavenCentral() } }\n" > build.gradle
-          printf "plugins { id 'com.android.application' }\nandroid {\n  namespace '\$PKG'\n  compileSdk 34\n  defaultConfig {\n    applicationId '\$PKG'\n    minSdk 21\n    targetSdk 34\n  }\n}\ndependencies { implementation 'androidx.appcompat:appcompat:1.6.1' }\n" > app/build.gradle
-          printf "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">\n  <uses-permission android:name=\"android.permission.INTERNET\" />\n  <application android:label=\"\$NAME\" android:usesCleartextTraffic=\"true\">\n    <activity android:name=\".MainActivity\" android:exported=\"true\">\n      <intent-filter>\n        <action android:name=\"android.intent.action.MAIN\" />\n        <category android:name=\"android.intent.category.LAUNCHER\" />\n      </intent-filter>\n    </activity>\n  </application>\n</manifest>\n" > app/src/main/AndroidManifest.xml
-          printf "package \$PKG;\nimport android.os.Bundle;\nimport android.webkit.WebView;\nimport android.webkit.WebViewClient;\nimport androidx.appcompat.app.AppCompatActivity;\npublic class MainActivity extends AppCompatActivity {\n  @Override protected void onCreate(Bundle b) {\n    super.onCreate(b);\n    WebView w = new WebView(this);\n    w.getSettings().setJavaScriptEnabled(true);\n    w.setWebViewClient(new WebViewClient());\n    w.loadUrl(\"\$URL\");\n    setContentView(w);\n  }\n}\n" > app/src/main/java/com/megan/webapk/MainActivity.java
+          mkdir -p app/src/main/res/values
+
+          cat > settings.gradle <<'EOF'
+          rootProject.name = "WebAPK"
+          include ':app'
+          EOF
+
+          cat > gradle.properties <<'EOF'
+          android.useAndroidX=true
+          android.enableJetifier=true
+          org.gradle.jvmargs=-Xmx2048m
+          EOF
+
+          cat > build.gradle <<'EOF'
+          buildscript {
+            repositories { google(); mavenCentral() }
+            dependencies { classpath 'com.android.tools.build:gradle:8.2.0' }
+          }
+          allprojects {
+            repositories { google(); mavenCentral() }
+          }
+          EOF
+
+          cat > app/build.gradle <<EOF
+          plugins { id 'com.android.application' }
+          android {
+            namespace '${{ inputs.package_id }}'
+            compileSdk 34
+            defaultConfig {
+              applicationId '${{ inputs.package_id }}'
+              minSdk 21
+              targetSdk 34
+              versionCode 1
+              versionName "1.0"
+            }
+          }
+          dependencies { implementation 'androidx.appcompat:appcompat:1.6.1' }
+          EOF
+
+          cat > app/src/main/AndroidManifest.xml <<EOF
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+            <uses-permission android:name="android.permission.INTERNET" />
+            <application android:label="${{ inputs.app_name }}" android:usesCleartextTraffic="true">
+              <activity android:name=".MainActivity" android:exported="true">
+                <intent-filter>
+                  <action android:name="android.intent.action.MAIN" />
+                  <category android:name="android.intent.category.LAUNCHER" />
+                </intent-filter>
+              </activity>
+            </application>
+          </manifest>
+          EOF
+
+          cat > app/src/main/java/com/megan/webapk/MainActivity.java <<EOF
+          package ${{ inputs.package_id }};
+
+          import android.os.Bundle;
+          import android.webkit.WebView;
+          import android.webkit.WebViewClient;
+          import androidx.appcompat.app.AppCompatActivity;
+
+          public class MainActivity extends AppCompatActivity {
+            @Override
+            protected void onCreate(Bundle b) {
+              super.onCreate(b);
+              WebView w = new WebView(this);
+              w.getSettings().setJavaScriptEnabled(true);
+              w.getSettings().setDomStorageEnabled(true);
+              w.setWebViewClient(new WebViewClient());
+              w.loadUrl("${{ inputs.website_url }}");
+              setContentView(w);
+            }
+          }
+          EOF
+
           echo "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==" | base64 -d > app/src/main/res/mipmap-hdpi/ic_launcher.png
 
       - name: Build APK
@@ -56,3 +121,4 @@ jobs:
         with:
           name: app-debug
           path: app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
