@@ -73,12 +73,33 @@ jobs:
           dependencies { implementation 'androidx.appcompat:appcompat:1.6.1' }
           EOF
 
+          mkdir -p app/src/main/res/values
+          
+          cat > app/src/main/res/values/styles.xml <<EOF
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+            <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
+              <item name="colorPrimary">#FF6B35</item>
+              <item name="colorPrimaryDark">#CC5629</item>
+              <item name="colorAccent">#FF6B35</item>
+            </style>
+          </resources>
+          EOF
+
           cat > app/src/main/AndroidManifest.xml <<EOF
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
             <uses-permission android:name="android.permission.INTERNET" />
-            <application android:label="${{ inputs.app_name }}" android:usesCleartextTraffic="true">
-              <activity android:name=".MainActivity" android:exported="true">
+            <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+            <application 
+              android:label="${{ inputs.app_name }}" 
+              android:theme="@style/AppTheme"
+              android:usesCleartextTraffic="true"
+              android:hardwareAccelerated="true">
+              <activity 
+                android:name=".MainActivity" 
+                android:exported="true"
+                android:configChanges="orientation|screenSize|keyboardHidden">
                 <intent-filter>
                   <action android:name="android.intent.action.MAIN" />
                   <category android:name="android.intent.category.LAUNCHER" />
@@ -92,20 +113,45 @@ jobs:
           package ${{ inputs.package_id }};
 
           import android.os.Bundle;
+          import android.webkit.WebSettings;
           import android.webkit.WebView;
           import android.webkit.WebViewClient;
           import androidx.appcompat.app.AppCompatActivity;
 
           public class MainActivity extends AppCompatActivity {
+            private WebView webView;
+            
             @Override
-            protected void onCreate(Bundle b) {
-              super.onCreate(b);
-              WebView w = new WebView(this);
-              w.getSettings().setJavaScriptEnabled(true);
-              w.getSettings().setDomStorageEnabled(true);
-              w.setWebViewClient(new WebViewClient());
-              w.loadUrl("${{ inputs.website_url }}");
-              setContentView(w);
+            protected void onCreate(Bundle savedInstanceState) {
+              super.onCreate(savedInstanceState);
+              try {
+                webView = new WebView(this);
+                WebSettings settings = webView.getSettings();
+                settings.setJavaScriptEnabled(true);
+                settings.setDomStorageEnabled(true);
+                settings.setLoadWithOverviewMode(true);
+                settings.setUseWideViewPort(true);
+                settings.setBuiltInZoomControls(true);
+                settings.setDisplayZoomControls(false);
+                settings.setMediaPlaybackRequiresUserGesture(false);
+                settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+                
+                webView.setWebViewClient(new WebViewClient());
+                webView.loadUrl("${{ inputs.website_url }}");
+                setContentView(webView);
+              } catch (Exception e) {
+                e.printStackTrace();
+                finish();
+              }
+            }
+            
+            @Override
+            public void onBackPressed() {
+              if (webView != null && webView.canGoBack()) {
+                webView.goBack();
+              } else {
+                super.onBackPressed();
+              }
             }
           }
           EOF
